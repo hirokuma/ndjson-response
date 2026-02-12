@@ -10,4 +10,5 @@ serde_json.workspace = true
 tokio.workspace = true
 
 axum = { version = "0.8.8", features = ["json", "macros"] }
-futures = "0.3.31"
+async-stream = "0.3.6"
+futures-core = "0.3.31"

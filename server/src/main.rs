@@ -4,7 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
-use futures::stream::{self, StreamExt};
+use async_stream::stream;
 use serde::Serialize;
 
 #[tokio::main]
@@ -35,17 +35,21 @@ async fn handler_json() -> Json<Item> {
 }
 
 async fn handler_stream() -> impl IntoResponse {
-    let item_stream = stream::iter(0..10).map(|i| {
-        let item = Item {
-            id: i,
-            data: format!("data-{}", i),
-        };
-        let mut json = serde_json::to_string(&item).unwrap();
-        json.push('\n');
-        Ok::<_, std::io::Error>(json)
-    });
+    let body_stream = stream! {
+        for i in 0..10 {
+            let item = Item {
+                id: i,
+                data: format!("data-{}", i),
+            };
+            let mut json = serde_json::to_string(&item).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            json.push('\n');
+            yield Ok::<_, std::io::Error>(json);
+
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
+    };
     Response::builder()
         .header("content-type", "application/x-ndjson")
-        .body(Body::from_stream(item_stream))
+        .body(Body::from_stream(body_stream))
         .unwrap()
 }
