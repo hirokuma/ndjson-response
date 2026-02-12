@@ -6,6 +6,7 @@ use axum::{
 };
 use async_stream::stream;
 use serde::Serialize;
+use futures_core::Stream;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -35,8 +36,16 @@ async fn handler_json() -> Json<Item> {
 }
 
 async fn handler_stream() -> impl IntoResponse {
-    let body_stream = stream! {
-        for i in 0..10 {
+    let body_stream = get_item_stream(10);
+    Response::builder()
+        .header("content-type", "application/x-ndjson")
+        .body(Body::from_stream(body_stream))
+        .unwrap()
+}
+
+fn get_item_stream(num: i32) -> impl Stream<Item = std::io::Result<String>> {
+    stream! {
+        for i in 0..num {
             let item = Item {
                 id: i,
                 data: format!("data-{}", i),
@@ -47,9 +56,5 @@ async fn handler_stream() -> impl IntoResponse {
 
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
-    };
-    Response::builder()
-        .header("content-type", "application/x-ndjson")
-        .body(Body::from_stream(body_stream))
-        .unwrap()
+    }
 }
