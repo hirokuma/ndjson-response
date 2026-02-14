@@ -1,12 +1,12 @@
+use async_stream::stream;
 use axum::{
     Json, Router,
     body::Body,
     response::{IntoResponse, Response},
     routing::get,
 };
-use async_stream::stream;
-use serde::Serialize;
 use futures_core::Stream;
+use serde::Serialize;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -45,11 +45,7 @@ async fn handler_stream() -> impl IntoResponse {
 
 fn get_item_stream(num: i32) -> impl Stream<Item = std::io::Result<String>> {
     stream! {
-        for i in 0..num {
-            let item = Item {
-                id: i,
-                data: format!("data-{}", i),
-            };
+        for item in get_item_iter(num) {
             let mut json = serde_json::to_string(&item).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
             json.push('\n');
             yield Ok::<_, std::io::Error>(json);
@@ -57,4 +53,16 @@ fn get_item_stream(num: i32) -> impl Stream<Item = std::io::Result<String>> {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
     }
+}
+
+fn get_item_iter(num: i32) -> impl Iterator<Item = Item> {
+    // Vec<T>を返すのとあまり変わらないが、iteratorを返すというコードにしたいだけである
+    let mut v: Vec<Item> = Vec::new();
+    for i in 0..num {
+        v.push(Item {
+            id: i,
+            data: format!("data-{}", i),
+        });
+    }
+    v.into_iter()
 }
